@@ -372,16 +372,48 @@
     .qa-text span{font-size:0.72rem;color:var(--text2);}
     .qa-arrow{color:var(--green);font-size:1.1rem;font-weight:700;}
 
-    /* STATS */
+    /* STATS - Proper Modern Metric Card Boxes */
     .stats{
-      display:flex;justify-content:center;flex-wrap:wrap;margin-top:50px;border:1px solid var(--border);
-      border-radius:16px;overflow:hidden;max-width:800px;margin-inline:auto;animation:fadeUp 0.6s 0.4s ease both;
-      background:rgba(17,29,18,0.5);
+      display:grid;grid-template-columns:repeat(5, 1fr);gap:12px;
+      max-width:880px;width:100%;margin:48px auto 0;
+      animation:fadeUp 0.6s 0.4s ease both;
     }
-    .stat{flex:1;min-width:120px;padding:16px 14px;text-align:center;border-right:1px solid var(--border);}
-    .stat:last-child{border-right:none;}
-    .stat-num{font-family:'Syne',sans-serif;font-size:1.55rem;font-weight:800;color:var(--green);}
-    .stat-label{font-size:0.72rem;color:var(--text2);margin-top:3px;}
+    .stat{
+      background:rgba(18, 30, 21, 0.7);
+      border:1px solid rgba(61, 220, 110, 0.18);
+      border-radius:16px;
+      padding:16px 10px;
+      text-align:center;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+      box-shadow:0 4px 18px rgba(0,0,0,0.2);
+      transition:transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      min-width:0;
+    }
+    .stat:hover{
+      transform:translateY(-3px);
+      border-color:rgba(61, 220, 110, 0.45);
+      box-shadow:0 8px 24px rgba(61, 220, 110, 0.15);
+    }
+    .stat.stat-featured{
+      background:linear-gradient(145deg, rgba(61, 220, 110, 0.14), rgba(18, 30, 21, 0.8));
+      border:1px solid rgba(61, 220, 110, 0.38);
+      box-shadow:0 4px 22px rgba(61, 220, 110, 0.12);
+    }
+    .stat-num{
+      font-family:'Syne',sans-serif;font-size:1.55rem;font-weight:800;color:var(--green);
+      line-height:1.15;display:inline-flex;align-items:baseline;justify-content:center;white-space:nowrap;
+    }
+    .stat-unit{font-size:0.95rem;font-weight:700;margin-left:2px;opacity:0.9;}
+    .stat-label{font-size:0.74rem;color:var(--text2);margin-top:2px;font-weight:500;white-space:nowrap;letter-spacing:0.2px;}
+
+    @media(max-width: 900px){
+      .stats{gap:8px;max-width:760px;}
+      .stat{padding:14px 6px;}
+      .stat-num{font-size:1.32rem;}
+      .stat-unit{font-size:0.85rem;}
+      .stat-label{font-size:0.68rem;}
+    }
 
     /* SECTIONS */
     section{position:relative;z-index:1;padding:80px 24px;}
@@ -1160,16 +1192,20 @@
       .weather-main{grid-column:span 2 !important;padding:20px !important;}
       .weather-stat-card{padding:16px 14px !important;}
 
-      /* Hero Stats 2-column grid instead of vertical column */
+      /* Hero Stats 2-column grid of proper individual card boxes */
       .stats{
         display:grid !important;grid-template-columns:1fr 1fr !important;
-        flex-direction:unset !important;gap:1px !important;background:var(--border) !important;
-        border:1px solid var(--border) !important;border-radius:16px !important;overflow:hidden !important;
-        margin-top:32px !important;width:100% !important;max-width:440px !important;
+        flex-direction:unset !important;gap:10px !important;background:transparent !important;
+        border:none !important;border-radius:0 !important;overflow:visible !important;
+        margin-top:28px !important;width:100% !important;max-width:440px !important;padding:0 !important;
       }
-      .stat{background:var(--card) !important;padding:12px 10px !important;border:none !important;min-width:0 !important;}
+      .stat{
+        background:rgba(18, 30, 21, 0.8) !important;border:1px solid rgba(61, 220, 110, 0.2) !important;
+        border-radius:14px !important;padding:14px 10px !important;min-width:0 !important;
+      }
       .stat:last-child{grid-column:span 2 !important;}
-      .stat-num{font-size:1.35rem;}
+      .stat-num{font-size:1.4rem !important;}
+      .stat-label{font-size:0.74rem !important;}
 
       /* Touch Inputs & iOS auto-zoom prevention */
       input,select,textarea{font-size:16px !important;}
@@ -1525,11 +1561,26 @@
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="stat-num">99.4%</div><div class="stat-label" data-i18n="stat-accuracy">AI Accuracy</div></div>
-    <div class="stat"><div class="stat-num">38</div><div class="stat-label" data-i18n="stat-crops">Disease Classes</div></div>
-    <div class="stat"><div class="stat-num">3</div><div class="stat-label" data-i18n="stat-languages">Languages</div></div>
-    <div class="stat"><div class="stat-num">🔥</div><div class="stat-label" data-i18n="stat-firebase">Firebase Backend</div></div>
-    <div class="stat"><div class="stat-num">20+</div><div class="stat-label" data-i18n="stat-kendras">Krushi Kendras</div></div>
+    <div class="stat stat-featured">
+      <div class="stat-num">99.4<span class="stat-unit">%</span></div>
+      <div class="stat-label" data-i18n="stat-accuracy">AI Accuracy</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">38</div>
+      <div class="stat-label" data-i18n="stat-crops">Disease Classes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">3</div>
+      <div class="stat-label" data-i18n="stat-languages">Languages</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">🔥</div>
+      <div class="stat-label" data-i18n="stat-firebase">Firebase Backend</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">20<span class="stat-unit">+</span></div>
+      <div class="stat-label" data-i18n="stat-kendras">Krushi Kendras</div>
+    </div>
   </div>
 </section>
 
