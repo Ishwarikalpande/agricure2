@@ -1,0 +1,12 @@
+
+__pycache__/
+*.pyc
+**/plantvillage/
+**/raw/
+backend/data/plantvillage/
+backend/data/raw/
+data/plantvillage/
+data/raw/
+cloudflared.exe
+*.exe
+venv/
