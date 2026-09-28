@@ -1306,19 +1306,30 @@
     </div>
     <div id="tab-login">
       <div class="auth-field"><label data-i18n="label-email">Email</label>
-        <input type="email" id="login-email" placeholder="farmer@example.com"/></div>
+        <input type="email" id="login-email" placeholder="farmer@example.com" oninput="document.getElementById('login-error').style.display='none'"/></div>
       <div class="auth-field"><label data-i18n="label-password">Password</label>
-        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()"/></div>
+        <div style="position:relative;width:100%">
+          <input type="password" id="login-pass" placeholder="••••••••" oninput="document.getElementById('login-error').style.display='none'" onkeydown="if(event.key==='Enter')handleLogin()" style="padding-right:42px;"/>
+          <button type="button" onclick="togglePassVisibility('login-pass', this)" aria-label="Toggle password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.1rem;padding:4px;line-height:1">👁️</button>
+        </div>
+      </div>
       <div class="auth-error" id="login-error"></div>
       <button class="auth-submit" onclick="handleLogin()" data-i18n="btn-signin">Sign In</button>
     </div>
     <div id="tab-register" style="display:none">
       <div class="auth-field"><label data-i18n="label-fullname">Full Name</label>
-        <input type="text" id="reg-name" placeholder="Ramesh Patil"/></div>
+        <input type="text" id="reg-name" placeholder="Ramesh Patil" oninput="document.getElementById('reg-error').style.display='none'"/></div>
       <div class="auth-field"><label data-i18n="label-email">Email</label>
-        <input type="email" id="reg-email" placeholder="farmer@example.com"/></div>
+        <input type="email" id="reg-email" placeholder="farmer@example.com" oninput="document.getElementById('reg-error').style.display='none'"/></div>
       <div class="auth-field"><label data-i18n="label-password">Password</label>
-        <input type="password" id="reg-pass" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')handleRegister()"/></div>
+        <div style="position:relative;width:100%">
+          <input type="password" id="reg-pass" placeholder="Min 6 chars (e.g. Agri123)" oninput="document.getElementById('reg-error').style.display='none'" onkeydown="if(event.key==='Enter')handleRegister()" style="padding-right:42px;"/>
+          <button type="button" onclick="togglePassVisibility('reg-pass', this)" aria-label="Toggle password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.1rem;padding:4px;line-height:1">👁️</button>
+        </div>
+        <div style="font-size:0.75rem;color:#94a3b8;margin-top:5px;line-height:1.4">
+          🔒 Min. 6 characters • 1 uppercase letter (A-Z) &amp; 1 number (0-9) mandatory
+        </div>
+      </div>
       <div class="auth-error" id="reg-error"></div>
       <button class="auth-submit" onclick="handleRegister()" data-i18n="btn-create-account">Create Account</button>
     </div>
@@ -3944,6 +3955,17 @@ function showAuthError(id,msg){
   el.textContent=msg; el.style.display='block';
   setTimeout(()=>{ el.style.display='none'; },5000);
 }
+function togglePassVisibility(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type === 'password'){
+    inp.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁️';
+  }
+}
 function setUserSession(user){
   window._currentUser = user;
   if(!user){
@@ -4019,12 +4041,32 @@ async function handleRegister(){
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-pass').value;
 
-  if(!name || !email || !pass){
-    showAuthError('reg-error', 'Please fill all fields');
+  if(!name){
+    showAuthError('reg-error', 'Please enter your name');
+    return;
+  }
+  if(!email){
+    showAuthError('reg-error', 'Please enter your email');
+    return;
+  }
+  if(!email.includes('@') || !email.includes('.')){
+    showAuthError('reg-error', 'Please enter a valid email address (e.g. farmer@example.com)');
+    return;
+  }
+  if(!pass){
+    showAuthError('reg-error', 'Please enter a password');
     return;
   }
   if(pass.length < 6){
     showAuthError('reg-error', 'Password must be at least 6 characters');
+    return;
+  }
+  if(!/[A-Z]/.test(pass)){
+    showAuthError('reg-error', 'Password must contain at least one uppercase letter (A-Z)');
+    return;
+  }
+  if(!/[0-9]/.test(pass)){
+    showAuthError('reg-error', 'Password must contain at least one number (0-9)');
     return;
   }
 
@@ -4034,12 +4076,15 @@ async function handleRegister(){
 
   let registeredUser = null;
 
-  // 1. Try Firebase Authentication SDK
+  // 1. Try Firebase Authentication SDK with 3.5s timeout for mobile resilience
   if(window._firebaseReady && window._auth && window._fbFns?.createUserWithEmailAndPassword){
     try {
-      const cred = await window._fbFns.createUserWithEmailAndPassword(window._auth, email, pass);
-      await window._fbFns.updateProfile(cred.user, { displayName: name });
+      const fbPromise = window._fbFns.createUserWithEmailAndPassword(window._auth, email, pass);
+      const toPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+      const cred = await Promise.race([fbPromise, toPromise]);
+
       try {
+        await window._fbFns.updateProfile(cred.user, { displayName: name });
         const { doc, setDoc, serverTimestamp } = window._fbFns;
         await setDoc(doc(window._db, 'users', cred.user.uid), {
           name: name,
@@ -4060,18 +4105,22 @@ async function handleRegister(){
         showAuthError('reg-error', 'Password must be at least 6 characters');
         return;
       }
-      console.warn('Firebase SDK error, activating instant fallback:', err);
+      console.warn('Firebase SDK error or timeout, activating instant fallback:', err);
     }
   }
 
-  // 2. Direct Google Identity API fallback if SDK had network block
+  // 2. Direct Google Identity API fallback with 2.5s timeout
   if(!registeredUser){
     try {
+      const controller = new AbortController();
+      const tId = setTimeout(() => controller.abort(), 2500);
       const resp = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyATTxXk-A5oTuFKSndw_nK42oxlWoxJPG4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, password: pass, returnSecureToken: true })
+        body: JSON.stringify({ email: email, password: pass, returnSecureToken: true }),
+        signal: controller.signal
       });
+      clearTimeout(tId);
       const data = await resp.json();
       if(data.idToken){
         registeredUser = {
@@ -4079,6 +4128,10 @@ async function handleRegister(){
           email: data.email,
           displayName: name
         };
+      } else if(data.error?.message === 'EMAIL_EXISTS'){
+        btn.textContent = t('btn-create-account'); btn.disabled = false;
+        showAuthError('reg-error', 'Email already registered. Please sign in.');
+        return;
       }
     } catch(fetchErr) {
       console.warn('Direct API also blocked, using local farmer storage fallback:', fetchErr);
@@ -4086,8 +4139,8 @@ async function handleRegister(){
   }
 
   // 3. Guaranteed Local Farmer Account Fallback
+  const localDb = JSON.parse(localStorage.getItem('agricure_registered_users') || '{}');
   if(!registeredUser){
-    const localDb = JSON.parse(localStorage.getItem('agricure_registered_users') || '{}');
     if(localDb[email.toLowerCase()]){
       btn.textContent = t('btn-create-account'); btn.disabled = false;
       showAuthError('reg-error', 'Email already registered. Please sign in.');
@@ -4102,8 +4155,7 @@ async function handleRegister(){
     localDb[email.toLowerCase()] = registeredUser;
     localStorage.setItem('agricure_registered_users', JSON.stringify(localDb));
   } else {
-    // Also save credential locally for offline sign in
-    const localDb = JSON.parse(localStorage.getItem('agricure_registered_users') || '{}');
+    // Also save credential locally for instant offline sign in
     localDb[email.toLowerCase()] = {
       uid: registeredUser.uid,
       email: email,
@@ -4134,37 +4186,40 @@ async function handleLogin(){
 
   let loggedUser = null;
 
-  // 1. Try Firebase Authentication SDK
+  // 1. Try Firebase Authentication SDK with 3.5s timeout
   if(window._firebaseReady && window._auth && window._fbFns?.signInWithEmailAndPassword){
     try {
-      const cred = await window._fbFns.signInWithEmailAndPassword(window._auth, email, pass);
+      const fbPromise = window._fbFns.signInWithEmailAndPassword(window._auth, email, pass);
+      const toPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+      const cred = await Promise.race([fbPromise, toPromise]);
       loggedUser = cred.user;
     } catch(err) {
-      if(err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password'){
-        // Check local store first before showing error
-        const localDb = JSON.parse(localStorage.getItem('agricure_registered_users') || '{}');
-        const found = localDb[email.toLowerCase()];
-        if(found && found.password === pass){
-          loggedUser = found;
-        } else {
-          btn.textContent = t('btn-signin'); btn.disabled = false;
-          showAuthError('login-error', 'Invalid email or password');
-          return;
-        }
+      const localDb = JSON.parse(localStorage.getItem('agricure_registered_users') || '{}');
+      const found = localDb[email.toLowerCase()];
+      if(found && found.password === pass){
+        loggedUser = found;
+      } else if(err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password'){
+        btn.textContent = t('btn-signin'); btn.disabled = false;
+        showAuthError('login-error', 'Invalid email or password');
+        return;
       } else {
-        console.warn('Firebase login network error, trying local check:', err);
+        console.warn('Firebase login network error or timeout, trying fallback:', err);
       }
     }
   }
 
-  // 2. Direct Google Identity API fallback
+  // 2. Direct Google Identity API fallback with 2.5s timeout
   if(!loggedUser){
     try {
+      const controller = new AbortController();
+      const tId = setTimeout(() => controller.abort(), 2500);
       const resp = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyATTxXk-A5oTuFKSndw_nK42oxlWoxJPG4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, password: pass, returnSecureToken: true })
+        body: JSON.stringify({ email: email, password: pass, returnSecureToken: true }),
+        signal: controller.signal
       });
+      clearTimeout(tId);
       const data = await resp.json();
       if(data.idToken){
         loggedUser = {
